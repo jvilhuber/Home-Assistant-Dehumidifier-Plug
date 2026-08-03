@@ -53,7 +53,7 @@ For each configured dehumidifier, the integration creates:
 
 The `number` and `time` entities are the live source of truth for the thresholds and schedule. Change them from the dashboard (slider / time picker) or from anywhere via `number.set_value` and `time.set_value` — the change takes effect on the next control cycle and persists across restarts. They are categorised as configuration entities.
 
-These entities are attached to the same device as the selected plug switch or power sensor.
+These entities are grouped under their own device, named after the configuration entry (the dehumidifier instance), and linked to the controlled plug's device via `via_device`. The device and each entity's identity are keyed on the config entry, so renaming the instance keeps the same entities instead of orphaning them.
 
 ## FAQ
 
