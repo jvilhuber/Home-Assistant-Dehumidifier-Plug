@@ -13,7 +13,7 @@ from .const import (
 from .coordinator import DehumidifierCoordinator
 from .models import DehumidifierConfig
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.SWITCH]
+PLATFORMS: list[Platform] = [Platform.NUMBER, Platform.SENSOR, Platform.SWITCH, Platform.TIME]
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:

@@ -22,12 +22,13 @@
   "options": {
     "step": {
       "init": {
-        "title": "Dehumidifier Options",
+        "title": "Dehumidifier Wiring",
+        "description": "Change which plug and sensors this dehumidifier controls. Humidity thresholds and the schedule are edited via the Turn On/Off and Start/End Time entities on the device.",
         "data": {
-          "humidity_on_threshold": "Upper Humidity Limit (%)",
-          "humidity_off_threshold": "Lower Humidity Limit (%)",
-          "start_time": "Start Time",
-          "end_time": "End Time"
+          "switch_entity": "Plug Switch",
+          "power_sensor": "Power Sensor",
+          "humidity_sensor": "Humidity Sensor",
+          "full_power_threshold": "Minimum Power Threshold (W)"
         }
       }
     }

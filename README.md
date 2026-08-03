@@ -31,7 +31,7 @@ For each dehumidifier you want to control, you must add a configuration entry. D
 - The humidity level to stop dehumidifying.
 - The time range during which the dehumidifier is allowed to operate.
 
-You can change the humidity thresholds and schedule later via the **Configure** button in the integration.
+The humidity thresholds and the schedule are exposed as adjustable entities (see below), so you can change them at any time from the dashboard, an automation, or a service call — no need to re-open the setup wizard. The **Configure** button remains available to re-point the instance at a different plug or sensor.
 
 ## Entities
 
@@ -45,6 +45,13 @@ For each configured dehumidifier, the integration creates:
   - `Full`
 
 - `switch.<name>_control`: enables or disables automatic control logic for the dehumidifier.
+
+- `number.<name>_turn_on_above`: humidity level (%) at which dehumidifying starts.
+- `number.<name>_turn_off_below`: humidity level (%) at which dehumidifying stops.
+- `time.<name>_start_time`: start of the daily operating window.
+- `time.<name>_end_time`: end of the daily operating window.
+
+The `number` and `time` entities are the live source of truth for the thresholds and schedule. Change them from the dashboard (slider / time picker) or from anywhere via `number.set_value` and `time.set_value` — the change takes effect on the next control cycle and persists across restarts. They are categorised as configuration entities.
 
 These entities are attached to the same device as the selected plug switch or power sensor.
 
@@ -60,7 +67,7 @@ The integration detects the "Full" state and stops issuing turn-off or turn-on c
 
 ### Can I change the humidity or schedule after setup?
 
-Yes. Use the **Configure** option in the integration panel.
+Yes. Adjust the `number.<name>_turn_on_above` / `number.<name>_turn_off_below` sliders and the `time.<name>_start_time` / `time.<name>_end_time` pickers — from the device page, a dashboard card, or a `number.set_value` / `time.set_value` service call. Changes apply on the next control cycle and survive restarts. To re-point the instance at a different plug or sensor, use the **Configure** option.
 
 ### Does the integration support multiple dehumidifiers?
 

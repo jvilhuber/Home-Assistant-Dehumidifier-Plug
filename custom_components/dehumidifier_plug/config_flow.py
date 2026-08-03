@@ -58,34 +58,48 @@ class DehumidifierOptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry: config_entries.ConfigEntry):
         self._config_entry = config_entry
 
+    def _current(self, key, fallback=None):
+        """Return the effective value for a field, preferring options over data."""
+        options = self.config_entry.options
+        if key in options:
+            return options[key]
+        return self.config_entry.data.get(key, fallback)
+
     async def async_step_init(self, user_input=None):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        # Display the options form for editing thresholds and time range
+        # The humidity thresholds and schedule are edited via the number/time
+        # entities on the device, so the options flow only covers the wiring:
+        # which plug and sensors this instance controls, plus the full-tank
+        # power threshold.
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
                 vol.Required(
-                    CONF_HUMIDITY_ON,
-                    default=self.config_entry.options.get(CONF_HUMIDITY_ON, DEFAULT_HUMIDITY_ON)
-                ): selector.NumberSelector(
-                    selector.NumberSelectorConfig(min=0, max=100, step=1, unit_of_measurement="%", mode=selector.NumberSelectorMode.BOX)
+                    CONF_SWITCH,
+                    default=self._current(CONF_SWITCH)
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="switch")
                 ),
                 vol.Required(
-                    CONF_HUMIDITY_OFF,
-                    default=self.config_entry.options.get(CONF_HUMIDITY_OFF, DEFAULT_HUMIDITY_OFF)
-                ): selector.NumberSelector(
-                    selector.NumberSelectorConfig(min=0, max=100, step=1, unit_of_measurement="%", mode=selector.NumberSelectorMode.BOX)
+                    CONF_POWER,
+                    default=self._current(CONF_POWER)
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor")
+                ),
+                vol.Required(
+                    CONF_HUMIDITY,
+                    default=self._current(CONF_HUMIDITY)
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor")
                 ),
                 vol.Optional(
-                    CONF_START_TIME,
-                    default=self.config_entry.options.get(CONF_START_TIME, DEFAULT_START_TIME)
-                ): selector.TimeSelector(),
-                vol.Optional(
-                    CONF_END_TIME,
-                    default=self.config_entry.options.get(CONF_END_TIME, DEFAULT_END_TIME)
-                ): selector.TimeSelector(),
+                    CONF_FULL_THRESHOLD,
+                    default=self._current(CONF_FULL_THRESHOLD, DEFAULT_FULL_THRESHOLD)
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(min=0, max=100, step=0.1, mode=selector.NumberSelectorMode.BOX)
+                ),
             })
         )
 
