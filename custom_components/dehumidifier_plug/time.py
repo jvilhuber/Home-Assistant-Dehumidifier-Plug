@@ -1,8 +1,7 @@
-from datetime import datetime, time
+from datetime import time
 
 from homeassistant.components.time import TimeEntity
 from homeassistant.helpers.entity import EntityCategory
-from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
 from homeassistant.helpers.device_registry import async_get as async_get_device_registry
 
@@ -27,42 +26,43 @@ async def async_setup_entry(hass, entry, async_add_entities):
     device_identifiers = device_entry.identifiers if device_entry else None
 
     async_add_entities([
-        DehumidifierScheduleTime(coordinator, config_key, meta, device_identifiers)
+        DehumidifierScheduleTime(coordinator, entry, config_key, meta, device_identifiers)
         for config_key, meta in TIME_TYPES.items()
     ])
 
 
-class DehumidifierScheduleTime(TimeEntity, RestoreEntity):
-    """A schedule boundary (start/end) that can be adjusted from the dashboard or a service call."""
+class DehumidifierScheduleTime(TimeEntity):
+    """A schedule boundary (start/end) adjustable from the dashboard or a service call.
+
+    The config entry is the single source of truth: the value is seeded from it
+    on setup and written straight back to it on every change, so the first
+    control cycle after a restart always runs with the current value.
+    """
 
     _attr_entity_category = EntityCategory.CONFIG
     _attr_should_poll = False
 
-    def __init__(self, coordinator, config_key, meta, device_identifiers):
+    def __init__(self, coordinator, entry, config_key, meta, device_identifiers):
         self.coordinator = coordinator
+        self._entry = entry
         self._config_key = config_key
         object_id = slugify(f"{coordinator.config.name}_{config_key}")
         self._attr_name = f"{coordinator.config.name} {meta['name']}"
         self._attr_unique_id = f"dehumidifier_{object_id}"
         self._attr_icon = meta["icon"]
         self._device_identifiers = device_identifiers
-        # Seed from the config entry; overridden by the restored value if present.
         self._attr_native_value = getattr(coordinator.config, config_key)
-
-    async def async_added_to_hass(self):
-        await super().async_added_to_hass()
-        last_state = await self.async_get_last_state()
-        if last_state is not None and last_state.state not in (None, "unknown", "unavailable"):
-            try:
-                self._attr_native_value = datetime.strptime(last_state.state, "%H:%M:%S").time()
-            except ValueError:
-                pass
-        # The entity is the source of truth for this value at runtime.
-        setattr(self.coordinator.config, self._config_key, self._attr_native_value)
 
     async def async_set_value(self, value: time) -> None:
         self._attr_native_value = value
+        # Apply live so control reacts immediately...
         setattr(self.coordinator.config, self._config_key, value)
+        # ...and persist to the config entry (as HH:MM:SS, matching from_dict)
+        # so a restart seeds the same value.
+        self.hass.config_entries.async_update_entry(
+            self._entry,
+            options={**self._entry.options, self._config_key: value.strftime("%H:%M:%S")},
+        )
         self.async_write_ha_state()
         await self.coordinator.async_request_refresh()
 

@@ -67,7 +67,12 @@ class DehumidifierOptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            # Preserve the threshold/schedule options owned by the number/time
+            # entities; only overlay the wiring fields edited here.
+            return self.async_create_entry(
+                title="",
+                data={**self.config_entry.options, **user_input},
+            )
 
         # The humidity thresholds and schedule are edited via the number/time
         # entities on the device, so the options flow only covers the wiring:

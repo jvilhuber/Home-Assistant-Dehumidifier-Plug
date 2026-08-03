@@ -58,6 +58,25 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def update_listener(hass: HomeAssistant, entry: ConfigEntry):
-    """Trigger reload when options are changed."""
-    await hass.config_entries.async_reload(entry.entry_id)
+    """Reload only when the wiring (plug/sensors/full-power) changed.
+
+    The humidity thresholds and schedule are owned by the number/time entities,
+    which already apply their changes to the live config before persisting them
+    to the entry. Reloading for those would needlessly tear down the entities,
+    so we only reload when a field the entities do not manage has changed.
+    """
+    entry_data = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if not entry_data:
+        return
+
+    config = entry_data["coordinator"].config
+    merged = {**entry.data, **entry.options}
+    wiring_changed = (
+        merged.get(CONF_SWITCH) != config.switch_entity
+        or merged.get(CONF_POWER) != config.power_sensor
+        or merged.get(CONF_HUMIDITY) != config.humidity_sensor
+        or float(merged.get(CONF_FULL_THRESHOLD, config.full_power_threshold)) != config.full_power_threshold
+    )
+    if wiring_changed:
+        await hass.config_entries.async_reload(entry.entry_id)
 
