@@ -70,6 +70,8 @@ class CoordinatorTests(unittest.IsolatedAsyncioTestCase):
     def create(self, switch="off", power="0", humidity="70", auto="on", inside=True):
         self.unit = object.__new__(Coordinator)
         self.unit.config = Config.from_dict(CONFIG)
+        self.unit._settings = CONFIG
+        self.unit._overrides = {}
         self.unit._last_auto_on = None
         self.unit._power_low_since = None
         self.unit._manual_override = False
@@ -435,6 +437,39 @@ class CoordinatorTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(self.unit._power_low_since)
         self.assertTrue(self.unit._is_full_latched)
         self.assertTrue(self.unit._manual_override)
+
+    async def test_set_override_applies_live_and_persists(self):
+        self.create()
+        await self.unit.set_override("humidity_on_threshold", 42.0)
+        self.assertEqual(self.unit.config.humidity_on_threshold, 42.0)
+        self.assertEqual(self.unit._overrides, {"humidity_on_threshold": 42.0})
+        self.unit.save_persistent_data.assert_awaited()
+
+    async def test_clear_overrides_restores_entry_values(self):
+        self.create()
+        await self.unit.set_override("humidity_on_threshold", 42.0)
+        await self.unit.clear_overrides()
+        self.assertEqual(self.unit._overrides, {})
+        self.assertEqual(self.unit.config.humidity_on_threshold, 60)
+
+    def test_update_settings_rebuilds_config_live(self):
+        self.create()
+        self.unit.update_settings({**CONFIG, "humidity_off_threshold": 30})
+        self.assertEqual(self.unit.config.humidity_off_threshold, 30)
+
+    async def test_time_window_override_changes_schedule(self):
+        self.create()
+        await self.unit.set_override("time_windows", [{"start": "04:00:00", "end": "22:00:00"}])
+        self.assertEqual(self.unit.config.time_windows[0][0], time(4, 0))
+
+    async def test_invalid_persisted_overrides_are_ignored(self):
+        self.create()
+        self.unit.storage = SimpleNamespace(async_load=AsyncMock(return_value={
+            "overrides": {"time_windows": [{"start": "nonsense", "end": "22:00:00"}]},
+        }))
+        await self.unit.load_persistent_data()
+        self.assertEqual(self.unit._overrides, {})
+        self.assertEqual(self.unit.config.humidity_on_threshold, 60)
 
 if __name__ == "__main__":
     unittest.main()

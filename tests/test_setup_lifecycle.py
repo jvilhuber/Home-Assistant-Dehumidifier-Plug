@@ -24,7 +24,26 @@ def load():
     core = module("homeassistant.core")
     core.HomeAssistant = object
     module("homeassistant.helpers.typing").ConfigType = dict
-    module("homeassistant.const").Platform = SimpleNamespace(SENSOR="sensor", SWITCH="switch")
+    module("homeassistant.const").Platform = SimpleNamespace(
+        SENSOR="sensor", SWITCH="switch", NUMBER="number", TIME="time")
+
+    class _FakeStore:
+        def __init__(self, *args, **kwargs):
+            pass
+        async def async_load(self):
+            return None
+        async def async_save(self, data):
+            pass
+        async def async_remove(self):
+            pass
+    module("homeassistant.helpers.storage").Store = _FakeStore
+    _registry = SimpleNamespace(
+        async_get_entity_id=lambda *a, **k: None,
+        async_update_entity=lambda *a, **k: None,
+    )
+    module("homeassistant.helpers.entity_registry").async_get = lambda hass: _registry
+    module("dehumidifier_plug.utils").slugify = lambda value: value.lower().replace(" ", "_")
+
     from dehumidifier_plug import models
     fake = module("dehumidifier_plug.coordinator")
     fake.DehumidifierCoordinator = Mock()
@@ -64,7 +83,11 @@ class SetupTests(unittest.IsolatedAsyncioTestCase):
                 async_reload=AsyncMock(),
             ),
         )
-        self.coord = SimpleNamespace(load_persistent_data=AsyncMock(), async_refresh=AsyncMock())
+        self.coord = SimpleNamespace(
+            load_persistent_data=AsyncMock(), async_refresh=AsyncMock(),
+            update_settings=Mock(), clear_overrides=AsyncMock(),
+            async_request_refresh=AsyncMock(),
+        )
         fake_coordinator.DehumidifierCoordinator.return_value = self.coord
 
     async def test_setup_starts_and_forwards(self):
@@ -81,12 +104,12 @@ class SetupTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(entry.listeners), 1)
         entry.options = {"power_sensor": "sensor.fixed"}
         self.assertTrue(await integration.async_setup_entry(self.hass, entry))
-        self.assertEqual(fake_coordinator.DehumidifierCoordinator.call_args.args[1].power_sensor, "sensor.fixed")
+        self.assertEqual(fake_coordinator.DehumidifierCoordinator.call_args.args[1]["power_sensor"], "sensor.fixed")
 
     async def test_null_option_does_not_erase_sensor(self):
         entry = Entry(options={"power_sensor": None})
         self.assertTrue(await integration.async_setup_entry(self.hass, entry))
-        self.assertEqual(fake_coordinator.DehumidifierCoordinator.call_args.args[1].power_sensor, "sensor.power")
+        self.assertEqual(fake_coordinator.DehumidifierCoordinator.call_args.args[1]["power_sensor"], "sensor.power")
 
     async def test_missing_humidity_rejected(self):
         entry = Entry({k: v for k, v in data.items() if k != "humidity_sensor"})
@@ -106,10 +129,14 @@ class SetupTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(await integration.async_unload_entry(self.hass, entry))
         self.assertIn(entry.entry_id, self.hass.data["dehumidifier_plug"])
 
-    async def test_options_listener_reloads_entry(self):
+    async def test_options_listener_applies_live_without_reload(self):
         entry = Entry()
+        await integration.async_setup_entry(self.hass, entry)
         await integration.update_listener(self.hass, entry)
-        self.hass.config_entries.async_reload.assert_awaited_once_with("entry-1")
+        self.coord.update_settings.assert_called_once()
+        self.coord.clear_overrides.assert_awaited_once()
+        self.coord.async_request_refresh.assert_awaited_once()
+        self.hass.config_entries.async_reload.assert_not_awaited()
 
 if __name__ == "__main__":
     unittest.main()

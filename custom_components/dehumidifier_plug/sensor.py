@@ -4,7 +4,6 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
 from homeassistant.helpers.device_registry import async_get as async_get_device_registry
 from .const import DOMAIN
-from .utils import slugify
 
 SENSOR_TYPES: dict[str, SensorEntityDescription] = {
     "status": SensorEntityDescription(
@@ -24,19 +23,18 @@ async def async_setup_entry(hass, entry, async_add_entities):
     device_identifiers = device_entry.identifiers if device_entry else None
 
     entities = [
-        DehumidifierSensor(coordinator, sensor_id, description, device_identifiers)
+        DehumidifierSensor(coordinator, entry.entry_id, sensor_id, description, device_identifiers)
         for sensor_id, description in SENSOR_TYPES.items()
     ]
     async_add_entities(entities)
 
 class DehumidifierSensor(SensorEntity):
-    def __init__(self, coordinator, sensor_id, description, device_identifiers):
+    def __init__(self, coordinator, entry_id, sensor_id, description, device_identifiers):
         self.coordinator = coordinator
         self.sensor_id = sensor_id
         self.entity_description = description
-        object_id = slugify(f"{coordinator.config.name}_{sensor_id}")
         self._attr_name = f"{coordinator.config.name} {description.name}"
-        self._attr_unique_id = f"dehumidifier_{object_id}"
+        self._attr_unique_id = f"dehumidifier_{entry_id}_{sensor_id}"
         if sensor_id != "status":
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._device_identifiers = device_identifiers
