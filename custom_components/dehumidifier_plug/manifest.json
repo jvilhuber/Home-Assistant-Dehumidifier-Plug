@@ -1,7 +1,7 @@
 {
   "domain": "dehumidifier_plug",
   "name": "Dehumidifier Plug",
-  "version": "1.4.0",
+  "version": "1.3.0b1",
   "documentation": "https://github.com/hcraveiro/Home-Assistant-Dehumidifier-Plug",
   "integration_type": "device",
   "dependencies": [],
