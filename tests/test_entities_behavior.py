@@ -73,7 +73,7 @@ class EntityTests(unittest.IsolatedAsyncioTestCase):
 
     def test_sensor_state_priorities(self):
         entity = self.sensor.DehumidifierSensor(
-            self.coordinator, "status", self.sensor.SENSOR_TYPES["status"], None
+            self.coordinator, "entry-1", "status", self.sensor.SENSOR_TYPES["status"], None
         )
         scenarios = [
             ({}, None),
@@ -97,7 +97,7 @@ class EntityTests(unittest.IsolatedAsyncioTestCase):
 
     def test_status_availability_and_device(self):
         entity = self.sensor.DehumidifierSensor(
-            self.coordinator, "status", self.sensor.SENSOR_TYPES["status"],
+            self.coordinator, "entry-1", "status", self.sensor.SENSOR_TYPES["status"],
             {("plug", "1")},
         )
         self.assertEqual(entity.device_info, {"identifiers": {("plug", "1")}})
@@ -107,34 +107,34 @@ class EntityTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_sensor_refresh(self):
         entity = self.sensor.DehumidifierSensor(
-            self.coordinator, "status", self.sensor.SENSOR_TYPES["status"], None
+            self.coordinator, "entry-1", "status", self.sensor.SENSOR_TYPES["status"], None
         )
         await entity.async_update()
         self.coordinator.async_request_refresh.assert_awaited_once()
 
     async def test_auto_switch_toggles(self):
-        entity = self.switch.DehumidifierAutoControlSwitch(self.coordinator, None)
+        entity = self.switch.DehumidifierAutoControlSwitch(self.coordinator, "entry-1", None)
         self.assertTrue(entity.is_on)
-        self.assertEqual(entity._attr_unique_id, "dehumidifier_suite_control")
+        self.assertEqual(entity._attr_unique_id, "dehumidifier_entry-1_control")
         await entity.async_turn_off()
         self.assertFalse(entity.is_on)
         await entity.async_turn_on()
         self.assertTrue(entity.is_on)
 
     async def test_auto_switch_restores_off(self):
-        entity = self.switch.DehumidifierAutoControlSwitch(self.coordinator, None)
+        entity = self.switch.DehumidifierAutoControlSwitch(self.coordinator, "entry-1", None)
         entity.async_get_last_state = AsyncMock(return_value=SimpleNamespace(state="off"))
         await entity.async_added_to_hass()
         self.assertFalse(entity.is_on)
 
     async def test_auto_switch_keeps_default_without_previous_state(self):
-        entity = self.switch.DehumidifierAutoControlSwitch(self.coordinator, None)
+        entity = self.switch.DehumidifierAutoControlSwitch(self.coordinator, "entry-1", None)
         entity.async_get_last_state = AsyncMock(return_value=None)
         await entity.async_added_to_hass()
         self.assertTrue(entity.is_on)
 
     async def test_restore_setting_after_unavailable_state(self):
-        entity = self.switch.DehumidifierAutoControlSwitch(self.coordinator, None)
+        entity = self.switch.DehumidifierAutoControlSwitch(self.coordinator, "entry-1", None)
         self.coordinator._auto_control_enabled = False
         entity.async_get_last_state = AsyncMock(return_value=SimpleNamespace(
             state="unavailable", attributes={}))
@@ -143,14 +143,14 @@ class EntityTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(entity.ready)
 
     def test_control_availability_tracks_coordinator(self):
-        entity = self.switch.DehumidifierAutoControlSwitch(self.coordinator, None)
+        entity = self.switch.DehumidifierAutoControlSwitch(self.coordinator, "entry-1", None)
         self.assertTrue(entity.available)
         self.coordinator.last_update_success = False
         self.assertFalse(entity.available)
 
     def test_disabled_control_is_reported_in_status(self):
         entity = self.sensor.DehumidifierSensor(
-            self.coordinator, "status", self.sensor.SENSOR_TYPES["status"], None)
+            self.coordinator, "entry-1", "status", self.sensor.SENSOR_TYPES["status"], None)
         self.coordinator.data = {"auto_enabled": False, "inside_schedule": True}
         self.assertEqual(entity.native_value, "Automatic control disabled")
         self.assertFalse(entity.extra_state_attributes["auto_enabled"])

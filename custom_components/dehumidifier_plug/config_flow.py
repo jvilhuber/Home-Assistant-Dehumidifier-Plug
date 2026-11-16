@@ -166,6 +166,22 @@ class DehumidifierOptionsFlowHandler(config_entries.OptionsFlow):
             **{key: value for key, value in self._config_entry.options.items() if value is not None},
             **(user_input or {}),
         }
+        # Seed the form from the live effective values (including any dashboard
+        # overrides) so the dialog always shows what is actually in effect.
+        store = getattr(self.hass, "data", None) or {}
+        entry_id = getattr(self._config_entry, "entry_id", None)
+        coordinator = store.get(DOMAIN, {}).get(entry_id, {}).get("coordinator")
+        if user_input is None and coordinator is not None:
+            cfg = coordinator.config
+            data = {
+                **data,
+                CONF_HUMIDITY_ON: cfg.humidity_on_threshold,
+                CONF_HUMIDITY_OFF: cfg.humidity_off_threshold,
+                CONF_WEEKDAYS: cfg.weekdays,
+                CONF_TIME_WINDOWS: [
+                    {"start": s.isoformat(), "end": e.isoformat()} for s, e in cfg.time_windows
+                ],
+            }
         return self.async_show_form(
             step_id="init",
             errors=errors,

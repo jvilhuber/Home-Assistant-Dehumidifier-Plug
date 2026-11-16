@@ -94,7 +94,7 @@ class StatusSensorTests(unittest.IsolatedAsyncioTestCase):
             async_add_listener=Mock(return_value=lambda: None),
         )
         self.entity = sensor.DehumidifierSensor(
-            self.coordinator, "status", sensor.SENSOR_TYPES["status"], {("plug", "1")}
+            self.coordinator, "entry-1", "status", sensor.SENSOR_TYPES["status"], {("plug", "1")}
         )
 
     def test_priority_and_states(self):
@@ -131,7 +131,7 @@ class ControlSwitchTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.coordinator = SimpleNamespace(config=SimpleNamespace(name="Test"), async_add_listener=Mock(), async_request_refresh=AsyncMock(), _auto_control_enabled=None, save_persistent_data=AsyncMock())
         self.entity = switch.DehumidifierAutoControlSwitch(
-            self.coordinator, {("plug", "1")}
+            self.coordinator, "entry-1", {("plug", "1")}
         )
         self.entity.schedule_update_ha_state = Mock()
         self.entity.async_on_remove = Mock()
