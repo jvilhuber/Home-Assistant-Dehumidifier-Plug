@@ -5,7 +5,7 @@
   "documentation": "https://github.com/hcraveiro/Home-Assistant-Dehumidifier-Plug",
   "integration_type": "device",
   "dependencies": [],
-  "codeowners": ["@jvilhuber"],
+  "codeowners": [],
   "requirements": [],
   "iot_class": "local_polling",
   "config_flow": true
